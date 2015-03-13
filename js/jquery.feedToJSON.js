@@ -10,7 +10,9 @@
 			}
 			options = $.extend($.feedToJson.defaults,options);
 			var url = options.yqlURL + options.yqlQS + "'" + encodeURIComponent(options.feed) + "'" + "&_nocache=" + options.cacheBuster;
+
 			return $.getJSON(url, function(data){  
+				console.log(data);
 					//console.log(data.query.results);
 					data = data.query.results;
 					$.isFunction(callback) && callback(data); //allows the callback function to be the only option
@@ -22,7 +24,9 @@
   //defaults
   $.feedToJson.defaults = {
   	yqlURL : 'http://query.yahooapis.com/v1/public/yql',  //yql 
-  	yqlQS : '?format=json&callback=?&q=select%20*%20from%20rss%20where%20url%3D',  //yql query string
+  	// URL for DeRedactie
+  	yqlQS: '?format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback=?&q=select%20*%20from%20xml%20where%20url%3D',
+  	//yqlQS : '?format=json&callback=?&q=select%20*%20from%20rss%20where%20url%3D',  //yql query string
   	feed:'http://instagr.am/tags/tacos/feed/recent.rss', //instagram recent posts tagged 'tacos'
   	cachebuster: Math.floor((new Date().getTime()) / 1200 / 1000), //yql caches feeds, so we change the feed url every 20min
   	success:null //success callback 

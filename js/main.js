@@ -73,7 +73,7 @@ jQuery(document).ready(function($) {
 		});
 		setTimeout(function() {
 			checkVersion();
-		}, 3000);
+		}, 60000);
 	})();
 
 	(function updateTime()
@@ -92,6 +92,7 @@ jQuery(document).ready(function($) {
 
 	(function updateCalendarData()
 	{
+
 		new ical_parser("calendar.php", function(cal){
         	events = cal.getEvents();
         	eventList = [];
@@ -139,7 +140,7 @@ jQuery(document).ready(function($) {
                         var time_string = moment(startDate).calendar()
                     }
                     if (!e.RRULE) {
-    	        		eventList.push({'description':e.SUMMARY,'seconds':seconds,'days':time_string});
+    	        		eventList.push({'description':e.SUMMARY,'seconds':seconds,'days':time_string, fromnow: Date.now() + (seconds*1000)});
                     }
                     e.seconds = seconds;
         		}
@@ -163,27 +164,65 @@ jQuery(document).ready(function($) {
                             } else {
                                 var time_string = moment(dt).calendar()
                             }
-                            eventList.push({'description':e.SUMMARY,'seconds':seconds,'days':time_string});
+                            eventList.push({'description':e.SUMMARY,'seconds':seconds,'days':time_string, fromnow: Date.now() + (seconds * 1000)});
                         }           
                     }
                 }
             };
         	eventList.sort(function(a,b){return a.seconds-b.seconds});
 
+        	updateCalendar();
         	setTimeout(function() {
         		updateCalendarData();
         	}, 60000);
     	});
 	})();
 
-	(function updateCalendar()
+	var showingEvent;
+
+	function updateCalendar()
 	{
+		var $bignotice = $('#bignotice');
 		table = $('<table/>').addClass('xsmall').addClass('calendar-table');
 		opacity = 1;
 
 
 		for (var i in eventList) {
-			var e = eventList[i];
+			var e = eventList[i],
+			    difference;
+
+			difference = e.fromnow - Date.now();
+
+			if (difference > -10000 && difference < 1800000) {
+				// Event starts in half an hour!
+
+				if (!showingEvent) {
+
+					var edate = new Date(e.fromnow),
+					    hourstring = edate.getHours() + ':',
+					    emin = edate.getMinutes();
+
+					if (emin < 10) {
+						emin = '0' + emin;
+					}
+
+					hourstring += emin;
+
+					$bignotice.show();
+					$bignotice.html('Event begint om <b>' + hourstring + '</b>:<br>' + JSON.stringify(e.description));
+
+					(function(e) {
+						setTimeout(function() {
+							if (e.description == showingEvent.description) {
+								$bignotice.hide();
+								showingEvent = null;
+							}
+						}, difference+30000);
+					}(e));
+
+					showingEvent = e;
+				}
+			}
 
 			var row = $('<tr/>').css('opacity',opacity);
 			row.append($('<td/>').html(e.description).addClass('description'));
@@ -197,24 +236,28 @@ jQuery(document).ready(function($) {
 
 		setTimeout(function() {
         	updateCalendar();
-        }, 1000);
-	})();
+        }, 30000);
+	};
 
 	(function updateCompliment()
 	{
         //see compliments.js
 		while (compliment == lastCompliment) {
-     
-      //Check for current time  
-      var compliments;
-      var date = new Date();
-      var hour = date.getHours();
-      //set compliments to use
-      if (hour >= 3 && hour < 12) compliments = morning;
-      if (hour >= 12 && hour < 17) compliments = afternoon;
-      if (hour >= 17 || hour < 3) compliments = evening;
 
-		compliment = Math.floor(Math.random()*compliments.length);
+			//Check for current time  
+			var compliments;
+			var date = new Date();
+			var hour = date.getHours();
+			//set compliments to use
+			if (hour >= 3 && hour < 12) compliments = morning;
+			if (hour >= 12 && hour < 17) compliments = afternoon;
+			if (hour >= 17 || hour < 3) compliments = evening;
+
+			if (!compliments || !compliments.length) {
+				break;
+			}
+
+			compliment = Math.floor(Math.random()*compliments.length);
 		}
 
 		$('.compliment').updateWithText(compliments[compliment], 4000);
@@ -360,9 +403,18 @@ jQuery(document).ready(function($) {
 		$.feedToJson({
 			feed: feed,
 			success: function(data){
+
+				var entries;
 				news = [];
-				for (var i in data.item) {
-					var item = data.item[i];
+
+				if (data.item) {
+					entries = data.item;
+				} else if (data.feed && data.feed.entry) {
+					entries = data.feed.entry;
+				}
+
+				for (var i in entries) {
+					var item = entries[i];
 					news.push(item.title);
 				}
 			}
